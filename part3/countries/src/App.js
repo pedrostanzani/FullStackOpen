@@ -1,83 +1,108 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react"
 import axios from 'axios';
 
-const Capital = ({ countryData }) => {
-  const capitalArr = countryData.capital;
-
-  if (capitalArr.length === 1) {
-    return <div>capital: {capitalArr[0]}</div>;
-  } else if (capitalArr === 0) {
-    return <div>n/a</div>;
-  } else {
-    return <div>capital cities: {capitalArr.join(', ')}</div>;
-  }
+const SearchBar = (props) => {
+  return (
+    <div>
+      find countries
+      <input type="text" value={props.query} onChange={props.onChange} />
+    </div>
+  )
 }
 
-const CountryData = ({ countryData }) => {
-  const languages = Object.values(countryData.languages);
-  const bold = { fontWeight: 'bold' };
+const Capital = ({ capitalCities }) => {
+  const length = capitalCities.length;
 
-  const name = countryData.name.common;
+  if (length === 1) { return <div>capital: {capitalCities[0]}</div>; } 
+  if (length === 0) { return <div>n/a</div>; }
+  return <div>capital cities: {capitalCities.join(', ')}</div>;
+}
+
+const CountryData = ({ country }) => {
+  const name = country.name.common;
+  const languages = Object.values(country.languages);
 
   return (
     <>
       <h2>{name}</h2>
-      <Capital countryData={countryData} />
-      <div>area: {countryData.area}</div>
-      <p style={bold}>languages:</p>
+      <Capital capitalCities={country.capital} />
+      <div>area: {country.area}</div>
+      <p style={{fontWeight: 'bold'}}>languages:</p>
       <ul>
-        {languages.map(l => <li key={l}>{l}</li>)}
+        {languages.map(language => <li key={language}>{language}</li>)}
       </ul>
-      <img src={countryData.flags.png} alt={`Flag of ${name}.`} />
+      <img src={country.flags.png} alt={`Flag of ${name}.`} />
     </>
   )
 }
 
-const SearchResults = ({ countries, query }) => {
-  const showCountries = countries.filter(country => {
-    let name  = country.name.common.toLowerCase();
-    return name.includes(query.toLowerCase());
-  });
+const Results = (props) => {
+  const length = props.countries.length;
 
-  if (showCountries.length > 10) {
-    return <p>Too many matches, please specify another filter.</p>
-  } else if (showCountries.length === 0) {
-    return <p>No matches found.</p>
-  } else if (showCountries.length === 1) {
-    return <CountryData countryData={showCountries[0]} />
+  if (length > 10) {
+    return (<p>Too many matches, please specify another filter.</p>);
+  } else if (length === 0) {
+    return (<p>No matches found.</p>);
+  } else if (length === 1) {
+    return <CountryData country={props.countries[0]} />
   } else {
     return (
       <ul>
-        {showCountries.map(country => <li key={country.name.common}>{country.name.common}</li>)}
+        {props.countries.map(country => {
+          const name = country.name.common;
+          return (
+            <li key={name}>
+              {name}
+              <button value={name} onClick={() => props.onClick(name)}>show</button>
+            </li>
+          );
+        })}
       </ul>
     )
   }
 }
 
 const App = () => {
+  // State
+  const [data, setData] = useState([]);
   const [query, setQuery] = useState('');
-  const [countries, setCountries] = useState([]);
+  const [showCountries, setShowCountries] = useState([]);
 
+  // Effect hook
   useEffect(() => {
     axios
-    .get('https://restcountries.com/v3.1/all')
-    .then(response => {
-       const data = response.data;
-       setCountries(data);
-    });
+      .get('https://restcountries.com/v3.1/all')
+      .then(response => {
+        const data = response.data;
+        setData(data);
+      });
   }, [])
 
-  const handleInput = (event) => { setQuery(event.target.value); }
+  // Helpers
+  const filterCountries = (newQuery) => {
+    return data.filter(country => {
+      const name = country.name.common.toLowerCase();
+      return name.includes(newQuery.toLowerCase());
+    });
+  }
+
+  // Event handlers
+  const handleChange = (event) => {
+    const newQuery = event.target.value;
+    setQuery(newQuery);
+    setShowCountries(filterCountries(newQuery));
+  };
+
+  const handleClick = (name) => {
+    setShowCountries(filterCountries(name));
+  }
 
   return (
     <>
-    <div>
-      find countries: 
-      <input type="text" value={query} onChange={handleInput} />
-    </div>
-    <SearchResults countries={countries} query={query} />
+      <SearchBar query={query} onChange={handleChange} />
+      <Results countries={showCountries} onClick={handleClick} />
     </>
-  );
+  )
 }
 
 export default App;
