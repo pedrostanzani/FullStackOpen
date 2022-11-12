@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+
+import personService from './services/persons';
 
 import Form from './components/Form';
 import People from './components/People';
@@ -13,18 +14,16 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   const [filter, setFilter] = useState('')
 
-  const [newID, setNewID] = useState(5);
-
+  // const [newID, setNewID] = useState(5);
 
   // Effect hooks
   useEffect(() => {
-    axios
-    .get('http://localhost:3001/persons')
-    .then(response => {
-      setPersons(response.data);
-    })
+    personService
+      .getAll()
+      .then(response => {
+        setPersons(response.data);
+      })
   }, [])
-
 
   // Event/input handlers
   const handleNameInputChange = (event) => { setNewName(event.target.value); }
@@ -39,13 +38,21 @@ const App = () => {
       return;
     }
 
-    const personObject = { name: newName, number: newNumber, id: newID };
-
+    // const personObject = { name: newName, number: newNumber, id: newID };
+    const personObject = { name: newName, number: newNumber };
+    
     if (persons.every(person => person.name !== newName)) {
-      setPersons(persons.concat(personObject));
-      setNewID(newID + 1);
-      setNewName('');
-      setNewNumber('');
+      personService
+        .create(personObject)
+        .then(response => {
+          const newObject = response.data;
+          setNewName('');
+          setNewNumber('');
+          setPersons(persons.concat(newObject));
+        })
+        .catch(error => {
+          console.log(error);
+        })
     } else {
       alert(`${newName} has already been added to the phonebook!`);
     };
