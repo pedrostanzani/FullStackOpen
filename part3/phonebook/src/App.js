@@ -58,6 +58,24 @@ const App = () => {
     };
   }
 
+  const deletePerson = (id) => {
+    const personTBD = persons.find(p => p.id === id);
+    const confirmation = window.confirm(`Are you sure you want to delete ${personTBD.name}?`)
+
+    if (confirmation) {
+      personService
+      .deletePerson(id)
+      .then(() => {
+        setPersons(persons.filter(p => p.id !== id));
+      })
+      .catch(() => {
+        alert("There was an error, please try again.")
+      })
+    }
+
+
+  }
+
   return (
     <div>
       <h2>Phonebook</h2>
@@ -73,7 +91,7 @@ const App = () => {
       />
 
       <h3>Numbers</h3>
-      <People persons={persons} filter={filter} />
+      <People persons={persons} filter={filter} deletePerson={deletePerson} />
 
     </div>
   )
