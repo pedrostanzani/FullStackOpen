@@ -1,96 +1,119 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react';
 
-const Person = (props) => <div>{props.name} {props.phone}</div>
+import personService from './services/persons';
 
-const People = (props) => {
-  // Apply search filter
-  const personsToShow = props.persons.filter(person => {
-    let name = person.name.toLowerCase();
-    let query = props.filter.toLowerCase();
-    return name.includes(query);
-  })
+import Form from './components/Form';
+import People from './components/People';
+import Filter from './components/Filter';
 
-  return (
-    <>
-      {personsToShow.map(person =>
-        <Person key={person.id} name={person.name} phone={person.phone} />
-      )}
-    </>
-  )
-}
+import utils from './utils';
 
-const SearchFilter = (props) => {
-  return (
-    <div>
-      filter shown with: <input value={props.value} onChange={props.onChange} />
-    </div>
-  )
-}
+import './index.css';
+import Notification from './components/Notification';
 
-const Form = (props) => {
-  return (
-    <form onSubmit={props.onSubmit}>
-      <div>
-        name: <input value={props.newName} onChange={props.onNameChange} />
-      </div>
-
-      <div>
-        number: <input value={props.newNumber} onChange={props.onNumberChange} />
-      </div>
-
-      <div>
-        <button type="submit">add</button>
-      </div>
-    </form>
-  )
-}
 
 const App = () => {
-  // State declarations
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', phone: '040-123456', id: 1 },
-    { name: 'Ada Lovelace', phone: '39-44-5323523', id: 2 },
-    { name: 'Dan Abramov', phone: '12-43-234345', id: 3 },
-    { name: 'Mary Poppendieck', phone: '39-23-6423122', id: 4 }
-  ])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [filter, setFilter] = useState('')
+  // State hooks
+  const [persons, setPersons] = useState([])
+  const [newName, setNewName] = useState('')     // Add person form
+  const [newNumber, setNewNumber] = useState('') // Add person form
+  const [filter, setFilter] = useState('')       // Filter form
 
-  const [newID, setNewID] = useState(5);
+  const [notificationMessage, setNotificationMessage] = useState(null);
+  const [notificationState, setNotificationState] = useState('success');
 
+  const resetForm = () => {
+    setNewName('');
+    setNewNumber('');
+  }
 
-  // Event/input handlers
-  const handleNameInputChange = (event) => { setNewName(event.target.value); }
+  const setAllContacts = () => {
+    personService
+      .getAll()
+      .then(contacts => {
+        setPersons(contacts);
+      })
+  }
+
+  const displayNotification = (message, state) => {
+    setNotificationMessage(message);
+    setNotificationState(state)
+    setTimeout(() => {
+      setNotificationMessage(null);
+    }, 5000)
+  }
+
+  // Effect hook
+  useEffect(() => { setAllContacts(); }, [])
+
+  // Form field input handlers
+  const handleFilterChange      = (event) => { setFilter(event.target.value); }
+  const handleNameInputChange   = (event) => { setNewName(event.target.value); }
   const handleNumberInputChange = (event) => { setNewNumber(event.target.value); }
-  const handleFilterChange = (event) => { setFilter(event.target.value); }
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (newNumber.trim() === '' || newName.trim() === '') {
-      alert("Can't add — empty field!")
+    // Check for empty fields
+    if (utils.areEmpty(newNumber, newName)) { alert("Can't add — empty field!"); return; }
+
+    const newPerson = { name: newName, number: newNumber };
+
+    // Check if contact already exists and suggest phone number change
+    if (persons.some(person => person.name === newName)) {
+      const message = `${newName} is already added to the phonebook. Replace the old number with a new one?`;
+      const confirmation = window.confirm(message);
+
+      if (!confirmation) { return; }
+
+      const id = persons.find(p => p.name === newName).id;
+      personService
+        .update(newPerson, id)
+        .then(() => {
+          resetForm();
+          setAllContacts();
+          displayNotification('Contact successfully updated!', 'success');
+        })
+        .catch(() => {
+          const message = `Information of ${newPerson.name} has already been removed from the server.`
+          displayNotification(message, 'error');
+        });
+
       return;
     }
 
-    const personObject = { name: newName, phone: newNumber, id: newID };
+    // Create new contact
+    personService
+      .create(newPerson)
+      .then(() => {
+        resetForm();
+        setAllContacts();
+        displayNotification('Contact successfully created!', 'success');
+      });
+  }
 
-    if (persons.every(person => person.name !== newName)) {
-      setPersons(persons.concat(personObject));
-      setNewID(newID + 1);
-      setNewName('');
-      setNewNumber('');
-    } else {
-      alert(`${newName} has already been added to the phonebook!`);
-    };
+  const deletePerson = (id) => {
+    const personObject = persons.find(p => p.id === id);
+
+    const message = `Are you sure you want to delete ${personObject.name}?`;
+    const confirmation = window.confirm(message);
+
+    if (!confirmation) { return; }
+
+    personService
+      .deletePerson(personObject.id)
+      .then(() => setAllContacts());
   }
 
   return (
     <div>
-      <h2>Phonebook</h2>
-      <SearchFilter value={filter} onChange={handleFilterChange} />
+      <h1>Phonebook</h1>
+      <Notification message={notificationMessage} state={notificationState} />
 
-      <h3>Add a new</h3>
+      <Filter value={filter} onChange={handleFilterChange} />
+
+
+      <h2>Add a new</h2>
       <Form
         onSubmit={handleSubmit}
         newName={newName}
@@ -99,8 +122,8 @@ const App = () => {
         onNumberChange={handleNumberInputChange}
       />
 
-      <h3>Numbers</h3>
-      <People persons={persons} filter={filter} />
+      <h2>Numbers</h2>
+      <People persons={persons} filter={filter} deletePerson={deletePerson} />
 
     </div>
   )
