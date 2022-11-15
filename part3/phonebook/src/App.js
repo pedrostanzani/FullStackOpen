@@ -8,6 +8,9 @@ import Filter from './components/Filter';
 
 import utils from './utils';
 
+import './index.css';
+import Notification from './components/Notification';
+
 
 const App = () => {
   // State hooks
@@ -16,12 +19,28 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('') // Add person form
   const [filter, setFilter] = useState('')       // Filter form
 
+  const [notificationMessage, setNotificationMessage] = useState(null);
+  const [notificationState, setNotificationState] = useState('success');
+
+  const resetForm = () => {
+    setNewName('');
+    setNewNumber('');
+  }
+
   const setAllContacts = () => {
     personService
       .getAll()
       .then(contacts => {
         setPersons(contacts);
       })
+  }
+
+  const displayNotification = (message, state) => {
+    setNotificationMessage(message);
+    setNotificationState(state)
+    setTimeout(() => {
+      setNotificationMessage(null);
+    }, 5000)
   }
 
   // Effect hook
@@ -50,7 +69,15 @@ const App = () => {
       const id = persons.find(p => p.name === newName).id;
       personService
         .update(newPerson, id)
-        .then(() => setAllContacts());
+        .then(() => {
+          resetForm();
+          setAllContacts();
+          displayNotification('Contact successfully updated!', 'success');
+        })
+        .catch(() => {
+          const message = `Information of ${newPerson.name} has already been removed from the server.`
+          displayNotification(message, 'error');
+        });
 
       return;
     }
@@ -58,7 +85,11 @@ const App = () => {
     // Create new contact
     personService
       .create(newPerson)
-      .then(() => setAllContacts());
+      .then(() => {
+        resetForm();
+        setAllContacts();
+        displayNotification('Contact successfully created!', 'success');
+      });
   }
 
   const deletePerson = (id) => {
@@ -77,7 +108,10 @@ const App = () => {
   return (
     <div>
       <h1>Phonebook</h1>
+      <Notification message={notificationMessage} state={notificationState} />
+
       <Filter value={filter} onChange={handleFilterChange} />
+
 
       <h2>Add a new</h2>
       <Form
