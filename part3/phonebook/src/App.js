@@ -4,93 +4,80 @@ import personService from './services/persons';
 
 import Form from './components/Form';
 import People from './components/People';
-import SearchFilter from './components/SearchFilter';
+import Filter from './components/Filter';
+
+import utils from './utils';
 
 
 const App = () => {
   // State hooks
   const [persons, setPersons] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [filter, setFilter] = useState('')
+  const [newName, setNewName] = useState('')     // Add person form
+  const [newNumber, setNewNumber] = useState('') // Add person form
+  const [filter, setFilter] = useState('')       // Filter form
 
-  // const [newID, setNewID] = useState(5);
-
-  // Effect hooks
-  useEffect(() => {
+  const setAllContacts = () => {
     personService
       .getAll()
-      .then(response => {
-        setPersons(response.data);
+      .then(contacts => {
+        setPersons(contacts);
       })
-  }, [])
+  }
 
-  // Event/input handlers
-  const handleNameInputChange = (event) => { setNewName(event.target.value); }
+  // Effect hook
+  useEffect(() => { setAllContacts(); }, [])
+
+  // Form field input handlers
+  const handleFilterChange      = (event) => { setFilter(event.target.value); }
+  const handleNameInputChange   = (event) => { setNewName(event.target.value); }
   const handleNumberInputChange = (event) => { setNewNumber(event.target.value); }
-  const handleFilterChange = (event) => { setFilter(event.target.value); }
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (newNumber.trim() === '' || newName.trim() === '') {
-      alert("Can't add — empty field!")
+    // Check for empty fields
+    if (utils.areEmpty(newNumber, newName)) { alert("Can't add — empty field!"); return; }
+
+    const newPerson = { name: newName, number: newNumber };
+
+    // Check if contact already exists and suggest phone number change
+    if (persons.some(person => person.name === newName)) {
+      const message = `${newName} is already added to the phonebook. Replace the old number with a new one?`;
+      const confirmation = window.confirm(message);
+
+      if (!confirmation) { return; }
+
+      const id = persons.find(p => p.name === newName).id;
+      personService
+        .update(newPerson, id)
+        .then(() => setAllContacts());
+
       return;
     }
 
-    // const personObject = { name: newName, number: newNumber, id: newID };
-    const personObject = { name: newName, number: newNumber };
-    
-    if (persons.every(person => person.name !== newName)) {
-      personService
-        .create(personObject)
-        .then(response => {
-          const newObject = response.data;
-          setNewName('');
-          setNewNumber('');
-          setPersons(persons.concat(newObject));
-        })
-        .catch(error => {
-          console.log(error);
-        })
-    } else {
-      const confirmation = window.confirm(`${newName} is already added to the phonebook. Replace the old number with a new one?`);
-      const id = persons.find(p => p.name === newName).id;
-
-      if (confirmation) {
-        personService
-        .put(personObject, id)
-        .then(() => {
-          personService
-          .getAll()
-          .then(response => {
-            setPersons(response.data);
-          })
-        })
-      }
-    };
+    // Create new contact
+    personService
+      .create(newPerson)
+      .then(() => setAllContacts());
   }
 
   const deletePerson = (id) => {
-    const personTBD = persons.find(p => p.id === id);
-    const confirmation = window.confirm(`Are you sure you want to delete ${personTBD.name}?`)
+    const personObject = persons.find(p => p.id === id);
 
-    if (confirmation) {
-      personService
-      .deletePerson(id)
-      .then(() => {
-        setPersons(persons.filter(p => p.id !== id));
-      })
-      .catch(() => {
-        alert("There was an error, please try again.")
-      })
-    }
+    const message = `Are you sure you want to delete ${personObject.name}?`;
+    const confirmation = window.confirm(message);
+
+    if (!confirmation) { return; }
+
+    personService
+      .deletePerson(personObject.id)
+      .then(() => setAllContacts());
   }
 
   return (
     <div>
-      <h2>Phonebook</h2>
-      <SearchFilter value={filter} onChange={handleFilterChange} />
+      <h1>Phonebook</h1>
+      <Filter value={filter} onChange={handleFilterChange} />
 
       <h3>Add a new</h3>
       <Form

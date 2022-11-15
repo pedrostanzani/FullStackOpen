@@ -1,4 +1,4 @@
-const SearchFilter = (props) => {
+const Filter = (props) => {
   return (
     <div>
       filter shown with: <input value={props.value} onChange={props.onChange} />
@@ -6,4 +6,4 @@ const SearchFilter = (props) => {
   )
 }
 
-export default SearchFilter;
+export default Filter;
