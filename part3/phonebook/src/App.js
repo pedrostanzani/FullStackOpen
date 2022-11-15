@@ -54,7 +54,20 @@ const App = () => {
           console.log(error);
         })
     } else {
-      alert(`${newName} has already been added to the phonebook!`);
+      const confirmation = window.confirm(`${newName} is already added to the phonebook. Replace the old number with a new one?`);
+      const id = persons.find(p => p.name === newName).id;
+
+      if (confirmation) {
+        personService
+        .put(personObject, id)
+        .then(() => {
+          personService
+          .getAll()
+          .then(response => {
+            setPersons(response.data);
+          })
+        })
+      }
     };
   }
 
@@ -72,8 +85,6 @@ const App = () => {
         alert("There was an error, please try again.")
       })
     }
-
-
   }
 
   return (

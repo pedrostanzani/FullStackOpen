@@ -11,10 +11,16 @@ const create = (newObject) => {
 }
 
 const deletePerson = (id) => {
-  const url = baseUrl + `/${id}/`
+  const url = baseUrl + `/${id}/`;
   return axios.delete(url);
 }
 
-const exports = { getAll, create, deletePerson }
+const put = (modifiedObject, id) => {
+  const url = baseUrl + `/${id}/`;
+  return axios.put(url, modifiedObject);
+}
+
+
+const exports = { getAll, create, deletePerson, put }
 
 export default exports;
